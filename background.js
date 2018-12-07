@@ -485,6 +485,8 @@ var History = {
 History.init();
 
 var Youtube = {
+  ports: [],
+
 	init: function() {
 		{
 			chrome.runtime.onConnect.addListener(function(objectPort) {
@@ -503,34 +505,42 @@ var Youtube = {
 								});
 							});
 						}
-
-						if (objectData.strMessage === 'youtubeEnsure') {
-							Youtube.ensure(objectData.objectArguments, function(objectArguments) {
-								objectPort.postMessage({
-									'strMessage': 'youtubeEnsure',
-									'objectArguments': objectArguments
-								});
-							});
-						}
-
-						if (objectData.strMessage === 'youtubeWatch') {
-							Youtube.watch(objectData.objectArguments, function(objectArguments) {
-								objectPort.postMessage({
-									'strMessage': 'youtubeWatch',
-									'objectArguments': objectArguments
-								});
-							});
-						}
-
-						if (objectData.strMessage === 'youtubeLookup') {
-							Youtube.lookup(objectData.objectArguments, function(objectArguments) {
-								objectPort.postMessage({
-									'strMessage': 'youtubeLookup',
-									'objectArguments': objectArguments
-								});
-							});
-						}
-					});
+          })
+        }
+        if (objectPort.name === 'new') {
+          Youtube.ports.push(objectPort)
+          objectPort.onDisconnect.addListener(() => {
+            const index = Youtube.ports.indexOf(objectPort)
+            if (index > -1) {
+              Youtube.ports.splice(index, 1)
+            }
+          })
+					objectPort.onMessage.addListener((msg) => {
+            switch (msg.type) {
+              case 'query':
+							  Youtube.lookup({
+                  strIdentities: msg.videoIds
+                }, function(result) {
+							  	objectPort.postMessage({
+							  		type: 'queryReply',
+							  		result: {
+                      [result.strIdent]: true
+                    }
+							  	})
+							  })
+                break
+              case 'watch':
+						  	Youtube.watch({
+					        strIdent: msg.videoId,
+					        strTitle: msg.videoTitle,
+					        longTimestamp: msg.timestamp
+                }, () => {})
+                break
+            }
+					})
+				  if (window.localStorage.getItem('extensions.YouRect.Visualization.boolHideprogress') === String(true)) {
+            objectPort.postMessage({ type: 'hideProgressBar' })
+          }
 				}
 			});
 		}
@@ -938,15 +948,13 @@ var Youtube = {
 
 		var functionBroadcast = function() {
 			{
-				chrome.tabs.query({
-					'url': '*://*.youtube.com/*'
-				}, function(objectTabs) {
-					for (var intFor1 = 0; intFor1 < objectTabs.length; intFor1 += 1) {
-						chrome.tabs.sendMessage(objectTabs[intFor1].id, {
-							'strMessage': 'youtubeUpdate'
-						});
-					}
-				});
+        for (const port of Youtube.ports) {
+					port.postMessage({
+            type: 'updateWatched',
+            videoId: objectArguments.strIdent,
+            watched: true
+					});
+        }
 			}
 			
 			functionCallback({
@@ -1146,59 +1154,6 @@ Search.init();
 		chrome.tabs.create({
 			'url': 'content/index.html'
 		});
-	});
-}
-
-{
-	chrome.tabs.onUpdated.addListener(function(intTab, objectData, objectTab) {
-		if (objectTab.url.indexOf('https://www.youtube.com') === 0) {
-			{
-				chrome.tabs.sendMessage(objectTab.id, {
-					'strMessage': 'youtubeUpdate'
-				});
-			}
-
-			{
-				if (window.localStorage.getItem('extensions.YouRect.Visualization.boolHideprogress') === String(true)) {
-					chrome.tabs.insertCSS(objectTab.id, {
-						'code': 'ytd-thumbnail-overlay-resume-playback-renderer { display:none; }' // new
-					});
-
-					chrome.tabs.insertCSS(objectTab.id, {
-						'code': '.resume-playback-background { display:none; } .resume-playback-progress-bar { display:none; }' // old
-					});
-				}
-			}
-		}
-	});
-}
-
-{
-	chrome.webRequest.onCompleted.addListener(function(objectData) {
-		chrome.tabs.sendMessage(objectData.tabId, {
-			'strMessage': 'youtubeUpdate'
-		});
-	}, {
-		'urls': [ '*://*.youtube.com/*' ]
-	});
-
-	chrome.webRequest.onCompleted.addListener(function(objectData) {
-		chrome.tabs.sendMessage(objectData.tabId, {
-			'strMessage': 'youtubeImage',
-			'strIdent': new RegExp('(\\/vi\\/)([^ ]*)(\\/)', 'g').exec(objectData.url)[2]
-		});
-	}, {
-		'urls': [ '*://*.ytimg.com/vi/*/*' ]
-	});
-}
-
-{
-	chrome.webNavigation.onHistoryStateUpdated.addListener(function(objectData) {
-		if (objectData.url.indexOf('youtube.com') !== -1) {
-			chrome.tabs.sendMessage(objectData.tabId, {
-				'strMessage': 'youtubeUpdate'
-			});
-		}
 	});
 }
 

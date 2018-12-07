@@ -11,6 +11,7 @@ ytd-thumbnail-overlay-playback-status-renderer {
 /* yourect watched badge */
 
 .yourect-watched-badge {
+	visibility:hidden;
 	position:absolute;
 
 	left:10px;
@@ -30,12 +31,21 @@ ytd-thumbnail-overlay-playback-status-renderer {
 	white-space:normal;
 }
 
+.yourect-watched-marker .yourect-watched-badge {
+	visibility:visible;
+}
+
 .ytd-playlist-panel-video-renderer .yourect-watched-badge {
 	left:45px;
 }
 
 .playlist-video .yourect-watched-badge {
 	left:33px;
+}
+
+.ytp-ce-covering-overlay .yourect-watched-badge, .ytp-videowall-still .yourect-watched-badge {
+	top:unset;
+	bottom:10px;
 }
 
 /* yourect watched fadeout */
@@ -53,5 +63,9 @@ ytd-thumbnail-overlay-playback-status-renderer {
 }
 
 .yourect-watched-marker .video-thumb img, .yourect-watched-marker .yt-uix-simple-thumb-related img {
+	opacity:0.3;
+}
+
+.yourect-watched-marker .ytp-videowall-still-image {
 	opacity:0.3;
 }

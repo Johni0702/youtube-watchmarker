@@ -1,423 +1,252 @@
-'use strict';
+/* eslint-env webextensions, browser */
 
-var Youtube = {
-	objectPort: null,
+const VIDEO_ID_ATTR = 'yourect-videoid'
+const WATCHED_MARKER_CLASS = 'yourect-watched-marker'
+const WATCHED_BADGE_CLASS = 'yourect-watched-badge'
 
-	init: function() {
-		{
-			Youtube.objectPort = chrome.runtime.connect({
-				'name': 'youtube'
-			});
-
-			Youtube.objectPort.onMessage.addListener(function(objectData) {
-				if (objectData.strMessage === 'youtubeEnsure') {
-					Youtube.ensureCallback(objectData.objectArguments);
-				}
-
-				if (objectData.strMessage === 'youtubeWatch') {
-					Youtube.watchCallback(objectData.objectArguments);
-				}
-
-				if (objectData.strMessage === 'youtubeLookup') {
-					Youtube.lookupCallback(objectData.objectArguments);
-				}
-			});
-		}
-		
-		{
-			Youtube.clicks();
-
-			Youtube.ensure();
-
-			Youtube.watch();
-
-			Youtube.lookup();
-		}
-	},
-	
-	dispel: function() {
-		{
-			Youtube.objectPort = null;
-		}
-	},
-
-	clicks: function() {
-		{
-			var objectAnchors = window.document.getElementsByTagName('a');
-			
-			for (var intFor1 = 0; intFor1 < objectAnchors.length; intFor1 += 1) {
-				if (objectAnchors[intFor1].onclick !== null) {
-					continue;
-					
-				} else if (objectAnchors[intFor1].getAttribute('href') === null) {
-					continue;
-					
-				} 
-				
-				objectAnchors[intFor1].onclick = function(objectEvent) {
-					objectEvent.stopPropagation();
-				};
-			}
-		}
-	},
-
-	ensure: function() {
-		var strIdentities = [];
-
-		{
-			var objectBadges = window.document.getElementsByTagName('ytd-thumbnail-overlay-playback-status-renderer'); // new
-
-			for (var intFor1 = 0; intFor1 < objectBadges.length; intFor1 += 1) {
-				var strIdent = '';
-				
-				{
-					if (objectBadges[intFor1].parentNode.parentNode.getAttribute('href') !== null) {
-						if (objectBadges[intFor1].parentNode.parentNode.getAttribute('href').substr(0, 9) === '/watch?v=') {
-							strIdent = objectBadges[intFor1].parentNode.parentNode.getAttribute('href').substr(9).substr(0, 11); 
-						}
-					}
-				}
-				
-				if (strIdent === '') {
-					continue;
-					
-				} else if (objectBadges[intFor1].parentNode.parentNode.getElementsByTagName('img').length === 0) {
-					continue;
-					
-				}
-				
-				{
-					strIdentities.push(strIdent);
-				}
-			}
-		}
-
-		{
-			var objectBadges = window.document.getElementsByClassName('watched-badge'); // old
-			
-			for (var intFor1 = 0; intFor1 < objectBadges.length; intFor1 += 1) {
-				var strIdent = '';
-				
-				{
-					if (objectBadges[intFor1].parentNode.getAttribute('href') !== null) {
-						if (objectBadges[intFor1].parentNode.getAttribute('href').substr(0, 9) === '/watch?v=') {
-							strIdent = objectBadges[intFor1].parentNode.getAttribute('href').substr(9).substr(0, 11); 
-						}
-					}
-				}
-				
-				if (strIdent === '') {
-					continue;
-					
-				} else if (objectBadges[intFor1].parentNode.getElementsByTagName('img').length === 0) {
-					continue;
-					
-				}
-				
-				{
-					strIdentities.push(strIdent);
-				}
-			}
-		}
-
-		{
-			var objectProgressbars = window.document.getElementsByTagName('ytd-thumbnail-overlay-resume-playback-renderer'); // new
-			
-			for (var intFor1 = 0; intFor1 < objectProgressbars.length; intFor1 += 1) {
-				var strIdent = '';
-				
-				{
-					if (objectProgressbars[intFor1].parentNode.parentNode.getAttribute('href') !== null) {
-						if (objectProgressbars[intFor1].parentNode.parentNode.getAttribute('href').substr(0, 9) === '/watch?v=') {
-							strIdent = objectProgressbars[intFor1].parentNode.parentNode.getAttribute('href').substr(9).substr(0, 11); 
-						}
-					}
-				}
-				
-				if (strIdent === '') {
-					continue;
-					
-				} else if (objectProgressbars[intFor1].parentNode.parentNode.getElementsByTagName('img').length === 0) {
-					continue;
-					
-				}
-				
-				{
-					strIdentities.push(strIdent);
-				}
-			}
-		}
-		
-		{
-			var objectProgressbars = window.document.getElementsByClassName('resume-playback-progress-bar'); // old
-			
-			for (var intFor1 = 0; intFor1 < objectProgressbars.length; intFor1 += 1) {
-				var strIdent = '';
-				
-				{
-					if (objectProgressbars[intFor1].parentNode.children[0].getAttribute('href') !== null) {
-						if (objectProgressbars[intFor1].parentNode.children[0].getAttribute('href').substr(0, 9) === '/watch?v=') {
-							strIdent = objectProgressbars[intFor1].parentNode.children[0].getAttribute('href').substr(9).substr(0, 11); 
-						}
-					}
-				}
-				
-				if (strIdent === '') {
-					continue;
-					
-				} else if (objectProgressbars[intFor1].parentNode.children[0].getElementsByTagName('img').length === 0) {
-					continue;
-					
-				}
-				
-				{
-					strIdentities.push(strIdent);
-				}
-			}
-		}
-		
-		{
-			Youtube.objectPort.postMessage({
-				'strMessage': 'youtubeEnsure',
-				'objectArguments' : {
-					'strIdentities': strIdentities
-				}
-			});
-		}
-	},
-	
-	ensureCallback: function(objectArguments) {
-
-	},
-	
-	watch: function() {
-		var strIdent = '';
-		var strTitle = '';
-		
-		{
-			if (window.location !== null) {
-				if (window.location.href.split('/watch?v=').length === 2) {
-					strIdent = window.location.href.split('/watch?v=')[1].substr(0, 11);
-				}
-			}
-		}
-		
-		{
-			if (window.document.getElementsByTagName('ytd-video-primary-info-renderer').length === 1) {
-				if (window.document.getElementsByTagName('ytd-video-primary-info-renderer')[0].getElementsByClassName('title').length === 1) {
-					strTitle = window.document.getElementsByTagName('ytd-video-primary-info-renderer')[0].getElementsByClassName('title')[0].textContent; // new
-				}
-			}
-
-			if (window.document.getElementById('eow-title') !== null) {
-				if (window.document.getElementById('eow-title').getAttribute('title') !== null) {
-					strTitle = window.document.getElementById('eow-title').getAttribute('title'); // old
-				}
-			}
-		}
-
-		if (strIdent === '') {
-			return;
-			
-		} else if (strTitle === '') {
-			return;
-			
-		} else if (strIdent === Youtube.watch.strIdent) {
-			return;
-			
-		} else if (strTitle === Youtube.watch.strTitle) {
-			return;
-			
-		}
-		
-		{
-			Youtube.watch.strIdent = strIdent;
-			
-			Youtube.watch.strTitle = strTitle;
-		}
-		
-		{
-			if (window.document.getElementById('yourect-header-badge') !== null) {
-				window.document.getElementById('yourect-header-badge').parentNode.removeChild(window.document.getElementById('yourect-header-badge'));
-			}
-		}
-		
-		{
-			Youtube.objectPort.postMessage({
-				'strMessage': 'youtubeWatch',
-				'objectArguments' : {
-					'strIdent': strIdent,
-					'longTimestamp': new Date().getTime(),
-					'strTitle': strTitle,
-					'intCount': null
-				}
-			});
-		}
-	},
-	
-	watchCallback: function(objectArguments) {
-		if (objectArguments === null) {
-			return;
-		}
-		
-		{
-			if (objectArguments.intCount > 1) {
-				if (window.document.getElementsByTagName('ytd-video-primary-info-renderer').length === 1) { // new
-					var objectBadge = window.document.createElement('div');
-					
-					{
-						objectBadge.classList.add('yourect-watched-badge');
-
-						objectBadge.textContent = 'WATCHED';
-
-						objectBadge.id = 'yourect-header-badge';
-
-						objectBadge.style.left = 'auto';
-						objectBadge.style.right = '0px';
-						objectBadge.style.zIndex = 10000;
-					}
-
-					{
-						window.document.getElementsByTagName('ytd-video-primary-info-renderer')[0].style.position = 'relative';
-					}
-					
-					window.document.getElementsByTagName('ytd-video-primary-info-renderer')[0].appendChild(objectBadge);
-				}
-
-				if (window.document.getElementById('watch-header') !== null) { // old
-					var objectBadge = window.document.createElement('div');
-					
-					{
-						objectBadge.classList.add('yourect-watched-badge');
-
-						objectBadge.textContent = 'WATCHED';
-
-						objectBadge.id = 'yourect-header-badge';
-
-						objectBadge.style.left = 'auto';
-						objectBadge.style.right = '10px';
-						objectBadge.style.zIndex = 10000;
-					}
-
-					{
-						window.document.getElementById('watch-header').style.position = 'relative';
-					}
-					
-					window.document.getElementById('watch-header').appendChild(objectBadge);
-				}
-			}
-		}
-	},
-	
-	lookup: function() {
-		var strIdentities = [];
-		
-		{
-			var objectVideo = window.document.getElementsByTagName('a');
-			
-			for (var intFor1 = 0; intFor1 < objectVideo.length; intFor1 += 1) {
-				var strIdent = '';
-				
-				{
-					if (objectVideo[intFor1].getAttribute('href') !== null) {
-						if (objectVideo[intFor1].getAttribute('href').substr(0, 9) === '/watch?v=') {
-							strIdent = objectVideo[intFor1].getAttribute('href').substr(9).substr(0, 11); 
-						}
-					}
-				}
-				
-				if (strIdent === '') {
-					continue;
-					
-				} else if (objectVideo[intFor1].getElementsByTagName('img').length === 0) {
-					continue;
-
-				} else if (objectVideo[intFor1].classList.contains('yourect-watched-marker') === true) {
-					continue;
-					
-				}
-				
-				{
-					objectVideo[intFor1].classList.add('YouRect' + '-' + strIdent);
-				}
-				
-				{
-					strIdentities.push(strIdent);
-				}
-			}
-		}
-		
-		{
-			Youtube.objectPort.postMessage({
-				'strMessage': 'youtubeLookup',
-				'objectArguments' : {
-					'strIdentities': strIdentities
-				}
-			});
-		}
-	},
-	
-	lookupCallback: function(objectArguments) {
-		if (objectArguments === null) {
-			return;
-		}
-		
-		{
-			var objectVideos = window.document.getElementsByClassName('YouRect' + '-' + objectArguments.strIdent);
-			for (var intFor1 = 0; intFor1 < objectVideos.length; intFor1 += 1) {
-				var objectVideo = objectVideos[intFor1];
-				
-				if (objectVideo.getElementsByTagName('img').length === 0) {
-					continue;
-
-				} else if (objectVideo.classList.contains('yourect-watched-marker') === true) {
-					continue;
-
-				}
-
-				{
-					objectVideo.classList.add('yourect-watched-marker');
-				}
-				
-				{
-					var objectBadge = window.document.createElement('div');
-					
-					{
-						objectBadge.classList.add('yourect-watched-badge');
-
-						objectBadge.textContent = 'WATCHED';
-					}
-					
-					objectVideo.appendChild(objectBadge);
-				}
-			}
-		}
-	}
-};
-Youtube.init();
-
-{
-	chrome.runtime.onMessage.addListener(function(objectData) {
-		if (objectData.strMessage === 'youtubeUpdate') {
-			{
-				Youtube.clicks();
-
-				Youtube.ensure();
-
-				Youtube.watch();
-
-				Youtube.lookup();
-			}
-
-		} else if (objectData.strMessage === 'youtubeImage') {
-			{
-				if (window.document.getElementsByClassName('YouRect' + '-' + objectData.strIdent).length === 0) {
-					if (window.document.getElementsByClassName('YouRect' + '-' + objectData.strIdent + '-' + 'watched').length === 0) {
-						Youtube.lookup();
-					}
-				}
-			}
-
-		}
-	});
+function isVideoThumbnail (elem) {
+  let href = elem.getAttribute('href')
+  if (!href) return false
+  if (!href.startsWith('/watch?v=') &&
+      !href.startsWith('https://www.youtube.com/watch?v=')) return false
+  if (!elem.classList.contains('ytd-thumbnail' /* ordinary thumbnail */) &&
+      !elem.classList.contains('ytp-ce-covering-overlay' /* end card */) &&
+      !elem.classList.contains('ytp-videowall-still' /* after video  */)) return false
+  return true
 }
+
+function getVideoId (elem) {
+  let href = elem.getAttribute('href')
+  let start = '/watch?v='
+  return href.substring(href.indexOf(start) + start.length).substring(0, 11)
+}
+
+function getActiveVideoId () {
+  if (window.location.pathname === '/watch') {
+    const urlParams = new URLSearchParams(window.location.search)
+    return urlParams.get('v')
+  }
+  return null
+}
+
+function getActiveVideoTitle () {
+  return window.document.querySelector('ytd-video-primary-info-renderer .title').textContent
+}
+
+function createWatchedBadge (elem) {
+  const badge = window.document.createElement('div')
+  badge.classList.add('yourect-watched-badge')
+  badge.textContent = 'WATCHED'
+  elem.appendChild(badge)
+}
+
+function createActiveVideoWatchedBadge (videoId) {
+  const elem = window.document.querySelector('ytd-video-primary-info-renderer')
+  elem.style.position = 'relative'
+  if (elem.getAttribute(VIDEO_ID_ATTR) !== videoId) {
+    elem.setAttribute(VIDEO_ID_ATTR, videoId)
+    elem.classList.remove(WATCHED_MARKER_CLASS)
+  }
+
+  if (elem.querySelector('#yourect-header-badge')) return
+
+  const badge = window.document.createElement('div')
+  badge.classList.add('yourect-watched-badge')
+  badge.textContent = 'WATCHED'
+  badge.id = 'yourect-header-badge'
+  badge.style.left = 'auto'
+  badge.style.right = '0px'
+  badge.style.zIndex = 10000
+  elem.appendChild(badge)
+}
+
+class BgApi {
+  constructor () {
+    this.port = chrome.runtime.connect({
+      name: 'new'
+    })
+  }
+
+  addListener (func) {
+    this.port.onMessage.addListener(func)
+  }
+
+  queryVideoIds (videoIds) {
+    this.port.postMessage({
+      type: 'query',
+      videoIds: videoIds
+    })
+  }
+
+  markAsWatched (videoId, videoTitle) {
+    this.port.postMessage({
+      type: 'watch',
+      videoId: videoId,
+      videoTitle: videoTitle,
+      timestamp: new Date().getTime()
+    })
+  }
+}
+
+class Youtube {
+  constructor () {
+    this.bg = new BgApi()
+    this.setupObserver = new MutationObserver(this.onSetupMutation.bind(this))
+    this.videoTitleObserver = new MutationObserver(this.onVideoTitleMutation.bind(this))
+    this.linkObserver = new MutationObserver(this.onLinkMutation.bind(this))
+  }
+
+  setup () {
+    this.bg.addListener(this.onMessage.bind(this))
+    this.setupObserver.observe(window.document.body, {
+      childList: true,
+      subtree: true
+    })
+    this.linkObserver.observe(window.document.body, {
+      attributes: true,
+      attributeFilter: ['class', 'href'],
+      childList: true,
+      subtree: true
+    })
+  }
+
+  onSetupMutation (mutations, setupObserver) {
+    for (const mutation of mutations) {
+      let info = mutation.target.querySelector('ytd-video-primary-info-renderer')
+      if (info) {
+        this.setupThumbnails(window.document)
+        this.setupActiveVideo()
+
+        const title = info.querySelector('.title yt-formatted-string')
+        this.videoTitleObserver.observe(title, {
+          childList: true
+        })
+
+        // we can stop now, youtube won't ever unload this element
+        setupObserver.disconnect()
+      }
+    }
+  }
+
+  onVideoTitleMutation (mutations, videoTitleObserver) {
+    for (const mutation of mutations) {
+      if (mutation.addedNodes.length > 0) {
+        this.setupActiveVideo()
+        return
+      }
+    }
+  }
+
+  setupActiveVideo () {
+    let videoId = getActiveVideoId()
+    if (!videoId) return
+
+    createActiveVideoWatchedBadge(videoId)
+    this.bg.queryVideoIds([videoId])
+
+    const video = window.document.querySelector('video')
+    let listener = () => {
+      if (video.closest('#movie_player').classList.contains('ad-showing')) {
+        return // don't want to mark the video as watched when we're only watching an ad
+      }
+
+      // If we've seen at least 10 seconds (or half the video), mark it as watched
+      if (video.currentTime > Math.min(10, video.duration / 2)) {
+        if (getActiveVideoId() !== videoId) {
+          return // switched to a different video by now
+        }
+        this.bg.markAsWatched(videoId, getActiveVideoTitle())
+        video.removeEventListener('timeupdate', listener)
+      }
+    }
+    video.addEventListener('timeupdate', listener)
+  }
+
+  setupThumbnails (container) {
+    if (!container.querySelectorAll) return
+    const elems = container.querySelectorAll('.ytd-thumbnail,.ytp-ce-covering-overlay,.ytp-videowall-still')
+    let videoIds
+    for (const elem of elems) {
+      if (!isVideoThumbnail(elem)) continue
+
+      if (!videoIds) {
+        videoIds = []
+      }
+      videoIds.push(getVideoId(elem))
+
+      this.setupThumbnail(elem)
+    }
+    if (videoIds) {
+      this.bg.queryVideoIds(videoIds)
+    }
+  }
+
+  setupThumbnail (elem) {
+    const videoId = getVideoId(elem)
+    if (!elem.querySelector('.' + WATCHED_BADGE_CLASS)) {
+      createWatchedBadge(elem)
+    }
+    if (elem.getAttribute(VIDEO_ID_ATTR) === videoId) {
+      return false
+    } else {
+      elem.setAttribute(VIDEO_ID_ATTR, videoId)
+      elem.classList.remove(WATCHED_MARKER_CLASS)
+      return true
+    }
+  }
+
+  onLinkMutation (mutations, linkObserver) {
+    let videoIds
+    for (const mutation of mutations) {
+      if (mutation.type === 'attributes') {
+        const elem = mutation.target
+        if (!isVideoThumbnail(elem)) continue
+        if (!this.setupThumbnail(elem)) continue
+
+        if (!videoIds) {
+          videoIds = []
+        }
+        videoIds.push(getVideoId(elem))
+      } else if (mutation.type === 'childList') {
+        for (const elem of mutation.addedNodes) {
+          this.setupThumbnails(elem)
+        }
+      }
+    }
+    if (videoIds) {
+      this.bg.queryVideoIds(videoIds)
+    }
+  }
+
+  applyWatchedState (videoId, watched) {
+    const elems = window.document.querySelectorAll(`[${VIDEO_ID_ATTR}='${videoId}']`)
+    for (const elem of elems) {
+      if (watched) {
+        elem.classList.add(WATCHED_MARKER_CLASS)
+      } else {
+        elem.classList.remove(WATCHED_MARKER_CLASS)
+      }
+    }
+  }
+
+  onMessage (msg) {
+    switch (msg.type) {
+      case 'hideProgressBar':
+        let elem = window.document.createElement('style')
+        elem.textContent = 'ytd-thumbnail-overlay-resume-playback-renderer { display:none; }'
+        window.document.head.appendChild(elem)
+        break
+      case 'queryReply':
+        for (const [videoId, watched] of Object.entries(msg.result)) {
+          this.applyWatchedState(videoId, watched)
+        }
+        break
+      case 'updateWatched':
+        this.applyWatchedState(msg.videoId, msg.watched)
+        break
+    }
+  }
+}
+
+const youtube = new Youtube()
+youtube.setup()

@@ -5,9 +5,9 @@
 	"description": "Automatically mark videos that you have already watched.",
 	"homepage_url": "http://sniklaus.com/",
 
-	"version": "3.0.1",
+	"version": "4.0.1",
 
-	"permissions": [ "alarms", "downloads", "history", "tabs", "webRequest", "webNavigation", "*://*.youtube.com/*", "*://*.ytimg.com/*" ],
+	"permissions": [ "alarms", "downloads", "history", "*://*.youtube.com/*" ],
 
 	"icons": {
 		"72": "content/images/icon.png"
