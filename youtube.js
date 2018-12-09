@@ -56,7 +56,6 @@ function createActiveVideoWatchedBadge (videoId) {
   badge.id = 'yourect-header-badge'
   badge.style.left = 'auto'
   badge.style.right = '0px'
-  badge.style.zIndex = 10000
   elem.appendChild(badge)
 }
 
